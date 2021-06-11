@@ -355,6 +355,20 @@ class RectangularRegion(_RotatedRectangle, Region):
 			for offset in ((hw, hl), (-hw, hl), (-hw, -hl), (hw, -hl)))
 		self.circumcircle = (self.position, self.radius)
 
+	def to_dict(self):	
+		d = {'position': self.position.coordinates,
+		     'heading': self.heading,
+		     'width': self.width,
+		     'length': self.length}
+		return d
+
+	@staticmethod
+	def from_dict(d):
+	    return RectangularRegion(Vector(d['position'][0], d['position'][1]),
+				     d['heading'],
+				     d['width'],
+				     d['length'])
+
 	def sampleGiven(self, value):
 		return RectangularRegion(value[self.position], value[self.heading],
 			value[self.width], value[self.length],

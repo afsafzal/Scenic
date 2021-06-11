@@ -6,7 +6,8 @@ import time
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.external_params import ExternalSampler
-from scenic.core.regions import EmptyRegion
+from scenic.core.regions import EmptyRegion, RectangularRegion
+from scenic.core.object_types import Object
 from scenic.core.workspaces import Workspace
 from scenic.core.vectors import Vector
 from scenic.core.utils import areEquivalent
@@ -30,7 +31,7 @@ class Scene:
 				 alwaysReqs=(), terminationConds=(), termSimulationConds=(), monitors=(),
 				 behaviorNamespaces={}, dynamicScenario=None):
 		self.workspace = workspace
-		self.objects = tuple(objects)
+		self.objects = list(objects)
 		self.egoObject = egoObject
 		self.params = params
 		self.alwaysRequirements = tuple(alwaysReqs)
@@ -53,6 +54,63 @@ class Scene:
 		if zoom != None:
 			self.workspace.zoomAround(plt, self.objects, expansion=zoom)
 		plt.show(block=block)
+
+	def to_dict(self):
+		d = {'workspace': self.workspace.region.to_dict(),
+		     'objects': [o.to_dict() for o in self.objects],
+		     'egoObject': self.egoObject.to_dict()
+		}
+		return d
+
+	@staticmethod
+	def from_dict(d, namespace):
+		all_objs = []
+		ego = None
+		for o in d['objects']:
+			obj = Object.from_dict(o, namespace)
+			if o == d['egoObject']:
+				ego = obj
+			all_objs.append(obj)
+		return Scene(Workspace(RectangularRegion.from_dict(d['workspace'])),
+			     all_objs,
+			     ego,
+			     [])
+	
+	def containerOfObject(self, obj):
+		if hasattr(obj, 'regionContainedIn') and obj.regionContainedIn is not None:
+			return obj.regionContainedIn
+		else:
+			return self.workspace.region
+
+	def is_valid(self):
+		"""Make some simple static checks for inconsistent built-in requirements.
+
+		:meta private:
+		"""
+		objects = self.objects
+		staticVisibility = self.egoObject and not needsSampling(self.egoObject.visibleRegion)
+		for i in range(len(objects)):
+			oi = objects[i]
+			container = self.containerOfObject(oi)
+			# Trivial case where container is empty
+			if isinstance(container, EmptyRegion):
+				return False
+			# Require object to be contained in the workspace/valid region
+			if not needsSampling(container) and not container.containsObject(oi):
+				return False
+			# Require object to be visible from the ego object
+			if staticVisibility and oi.requireVisible is True and oi is not self.egoObject:
+				if not self.egoObject.canSee(oi):
+					return False
+			# Require object to not intersect another object
+			for j in range(i):
+				oj = objects[j]
+				if oj.allowCollisions and oi.allowCollisions:
+					continue
+				if oi.intersects(oj):
+					return False
+		return True
+
 
 class Scenario:
 	"""Scenario()

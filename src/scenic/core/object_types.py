@@ -396,6 +396,34 @@ class Object(OrientedPoint, _RotatedRectangle):
 	behavior: None
 	lastActions: None
 
+	def to_dict(self):
+		d = {'class': type(self).__name__,
+		     'position': self.position.coordinates,
+		     'width': self.width,
+		     'length': self.length,
+		     'heading': self.heading,
+		     'regionContainedIn': self.regionContainedIn.to_dict() if self.regionContainedIn else {}}
+		if hasattr(self, 'height'):
+		    d['height'] = self.height
+		return d
+
+	@staticmethod
+	def from_dict(d, namespace):
+		# SUPER UNSAFE
+		cls = namespace[d['class']]
+		region = None
+		if d['regionContainedIn']:
+		    region = RectangularRegion.from_dict(d['regionContainedIn'])
+		vals = {'position': Vector(d['position'][0], d['position'][1]),
+			'heading': d['heading'],
+			'width': d['width'],
+			'length': d['length'],
+			'regionContainedIn': region}
+		if 'height' in d:
+		    vals['height'] = d['height']
+		return cls(**vals)
+
+
 	def __new__(cls, *args, **kwargs):
 		obj = super().__new__(cls)
 		# The _dynamicProxy attribute stores a mutable copy of the object used during
@@ -470,7 +498,7 @@ class Object(OrientedPoint, _RotatedRectangle):
 		camera = self.position.offsetRotated(self.heading, self.cameraOffset)
 		return SectorRegion(camera, self.visibleDistance, self.heading, self.viewAngle)
 
-	@cached_property
+	@property
 	def corners(self):
 		hw, hl = self.hw, self.hl
 		return (

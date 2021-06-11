@@ -7,9 +7,11 @@ import time
 import argparse
 import random
 import importlib.metadata
+import yaml
 
 import scenic.syntax.translator as translator
 import scenic.core.errors as errors
+from scenic.core.scenarios import Scene
 from scenic.core.simulators import SimulationCreationError
 
 parser = argparse.ArgumentParser(prog='scenic', add_help=False,
@@ -104,7 +106,7 @@ if args.seed is not None and args.verbosity >= 1:
 if args.verbosity >= 1:
     print('Beginning scenario construction...')
 startTime = time.time()
-scenario = errors.callBeginningScenicTrace(
+scenario, namespace = errors.callBeginningScenicTrace(
     lambda: translator.scenarioFromFile(args.scenicFile,
                                         params=params,
                                         model=args.model,
@@ -154,6 +156,12 @@ try:
         successCount = 0
         while True:
             scene, _ = generateScene()
+            d = scene.to_dict()
+            print(d)
+            with open('temp.yml', 'w') as f:
+                yaml.dump(d, f)
+
+            scene2 = Scene.from_dict(d, namespace)
             if args.simulate:
                 success = runSimulation(scene)
                 if success:
@@ -163,6 +171,7 @@ try:
             else:
                 if delay is None:
                     scene.show(zoom=args.zoom)
+                    scene2.show()
                 else:
                     scene.show(zoom=args.zoom, block=False)
                     plt.pause(delay)

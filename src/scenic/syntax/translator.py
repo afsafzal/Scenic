@@ -123,6 +123,7 @@ def scenarioFromStream(stream, params={}, model=None, scenario=None,
 			for name in toRemove:
 				del sys.modules[name]
 	# Construct a Scenario from the resulting namespace
+
 	return constructScenarioFrom(namespace, scenario)
 
 @contextmanager
@@ -2078,4 +2079,4 @@ def constructScenarioFrom(namespace, scenarioName=None):
 	if usePruning:
 		pruning.prune(scenario, verbosity=verbosity)
 
-	return scenario
+	return scenario, namespace
